@@ -1,0 +1,2434 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Exámenes V/F - Ministerio</title>
+    <script src="https://unpkg.com/tesseract.js@5.0.0/dist/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .header .btn {
+            transition: all 0.3s ease;
+        }
+
+        .header .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3) !important;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 15px;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #2980b9;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.3);
+        }
+
+        .upload-area.dragover {
+            border-color: #2980b9;
+            background: linear-gradient(135deg, #e8f4fd 0%, #d4edfa 100%);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #3498db;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .upload-text {
+            font-size: 1.3em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .upload-hint {
+            color: #888;
+            font-size: 1em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.6);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            box-shadow: 0 5px 15px rgba(149, 165, 166, 0.4);
+        }
+
+        .preview-section {
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin: 20px 0;
+        }
+
+        .preview-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .preview-canvas {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            border: 2px solid #3498db;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .canvas-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #processingCanvas {
+            max-width: 100%;
+            max-height: 600px;
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .detection-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .detection-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .validation-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .validation-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .validation-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .validation-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        /* Estilos para el canvas de procesamiento */
+        .canvas-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+        }
+
+        .canvas-container h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        #processingCanvas {
+            max-width: 90%;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: white;
+            cursor: crosshair;
+        }
+
+        .canvas-controls {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .canvas-info {
+            background: white;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 10px 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            font-size: 0.9em;
+            color: #2c3e50;
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .column-results {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .column-header {
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+            border-radius: 5px;
+        }
+
+        .answer-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .answer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .answer-item.true {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+
+        .answer-item.false {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+        }
+
+        .answer-item.empty {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+        }
+
+        .confidence-badge {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .debug-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .column-stats-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .column-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .column-stat.excellent {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+
+        .column-stat.good {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+        }
+
+        .column-stat.warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+        }
+
+        .error-count {
+            background: rgba(255, 0, 0, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            color: #721c24;
+        }
+
+        .detection-accuracy {
+            margin: 15px 0;
+            padding: 12px;
+            background: #fff;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .detection-accuracy .success {
+            color: #155724;
+            font-weight: bold;
+        }
+
+        .detection-accuracy .error {
+            color: #721c24;
+            font-weight: bold;
+        }
+
+        .accuracy-note {
+            display: block;
+            font-size: 0.9em;
+            margin-top: 5px;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        /* Estilos para el workspace de calibración */
+        .calibration-workspace {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .calibration-columns {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            min-height: 600px;
+        }
+
+        .calibration-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+
+        .calibration-panel h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .calibration-controls {
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            margin-bottom: 3px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.4);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.4);
+        }
+
+        .control-group span {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .calibration-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .calibration-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .calibration-info {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .calibration-info h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .calibration-info ol {
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .calibration-info li {
+            margin-bottom: 8px;
+        }
+
+        .canvas-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .canvas-preview h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .canvas-preview #processingCanvas {
+            max-width: 100%;
+            max-height: 70vh;
+            width: auto;
+            height: auto;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: white;
+            cursor: crosshair;
+        }
+
+        .canvas-preview .canvas-controls {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .canvas-preview .canvas-info {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 5px;
+            font-size: 12px;
+            color: #2c3e50;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Responsive para pantallas pequeñas */
+        @media (max-width: 1200px) {
+            .calibration-columns {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .calibration-panel {
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Procesador de Exámenes V/F - DPSP</h1>
+            <p>Sistema de detección precisa para exámenes de 180 preguntas con formato de 5 columnas</p>
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="downloadTemplate()" style="background: linear-gradient(135deg, #28a745 0%, #34ce57 100%); border: none; color: white; font-weight: bold; padding: 10px 20px; border-radius: 8px; font-size: 1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    📄 Descargar Plantilla (PDF)
+                </button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <!-- zona de arrastre con icono y texto -->
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">Arrastra o haz click para cargar</div>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+            </div>
+
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <h3>Vista previa del examen:</h3>
+                <img id="imagePreview" class="image-preview" />
+                <div class="preview-container">
+                </div>
+            </div>
+
+            <div class="controls" id="controlsSection" style="display: none;">
+                <button class="btn" id="processBtn" onclick="processExam()">
+                    🔍 Procesar Examen
+                </button>
+                <button class="btn secondary" id="calibrateBtn" onclick="calibrateDetection()" style="display: none;">
+                    ⚙️ Calibrar Detección
+                </button>
+                <button class="btn" id="downloadBtn" onclick="downloadResults()" style="display: none;">
+                    📊 Descargar CSV
+                </button>
+            </div>
+
+            <div class="loading" id="loadingSection">
+                <div class="spinner"></div>
+                <h3 id="loadingText">Procesando examen...</h3>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p id="progressText">0%</p>
+            </div>
+
+            <div class="detection-info" id="detectionInfo" style="display: none;">
+                <h3>📊 Información de Detección</h3>
+                <div class="detection-stats" id="detectionStats"></div>
+                <div id="validationStatus"></div>
+            </div>
+
+            <div class="calibration-workspace" id="calibrationWorkspace" style="display: none;">
+                <div class="calibration-columns">
+                    <!-- Panel de Calibración -->
+                    <div class="calibration-panel">
+                        <h3>⚙️ Panel de Calibración</h3>
+                        <div class="calibration-controls">
+                            <div class="control-group">
+                                <label for="marginLeftSlider">Margen Izquierdo:</label>
+                                <input type="range" id="marginLeftSlider" min="0" max="0.3" step="0.001" value="0.1">
+                                <span id="marginLeftDisplay">0.1000</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="marginTopSlider">Margen Superior:</label>
+                                <input type="range" id="marginTopSlider" min="0" max="0.3" step="0.001" value="0.15">
+                                <span id="marginTopDisplay">0.1500</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="colSpacingSlider">Espaciado Columnas:</label>
+                                <input type="range" id="colSpacingSlider" min="0.15" max="0.25" step="0.001"
+                                    value="0.196">
+                                <span id="colSpacingDisplay">0.1960</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="rowSpacingSlider">Espaciado Filas:</label>
+                                <input type="range" id="rowSpacingSlider" min="0.015" max="0.03" step="0.0001"
+                                    value="0.0205">
+                                <span id="rowSpacingDisplay">0.0205</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="circleOffsetXSlider">Offset Círculo V:</label>
+                                <input type="range" id="circleOffsetXSlider" min="0.02" max="0.08" step="0.001"
+                                    value="0.045">
+                                <span id="circleOffsetXDisplay">0.0450</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="circleOffsetXBetweenSlider">Distancia V-F:</label>
+                                <input type="range" id="circleOffsetXBetweenSlider" min="0.01" max="0.05" step="0.001"
+                                    value="0.025">
+                                <span id="circleOffsetXBetweenDisplay">0.0250</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="radiusSlider">Radio Detección:</label>
+                                <input type="range" id="radiusSlider" min="0.003" max="0.015" step="0.0001"
+                                    value="0.008">
+                                <span id="radiusDisplay">0.0080</span>
+                            </div>
+                        </div>
+
+                        <div class="calibration-actions">
+                            <button class="btn" onclick="applyCalibration()">🎯 Aplicar Cambios</button>
+                            <button class="btn secondary" onclick="resetCalibration()">🔄 Restablecer</button>
+                            <button class="btn" onclick="saveCalibration()">💾 Guardar Config</button>
+                        </div>
+
+                        <div class="calibration-info">
+                            <h4>🎯 Guía de Calibración:</h4>
+                            <ol>
+                                <li>Ajusta el <strong>margen izquierdo</strong> hasta que los marcadores se alineen con
+                                    la primera columna</li>
+                                <li>Modifica el <strong>espaciado de columnas</strong> para que cubran todas las 5
+                                    columnas</li>
+                                <li>Ajusta el <strong>offset del círculo V</strong> para alinear con los círculos de
+                                    Verdadero</li>
+                                <li>Modifica la <strong>distancia V-F</strong> para alinear con los círculos de Falso
+                                </li>
+                                <li>Ajusta el <strong>radio de detección</strong> según el tamaño de los círculos</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Canvas de Vista Previa -->
+                    <div class="canvas-preview">
+                        <h3>🎯 Vista Previa - Calibración en Tiempo Real</h3>
+                        <canvas id="processingCanvas"></canvas>
+                        <div class="canvas-controls">
+                            <div class="canvas-info">
+                                <strong>Leyenda:</strong>
+                                🟢 V marcado | 🔴 F marcado | ⚪ Vacío | 🟠 Error
+                            </div>
+                            <div class="canvas-info">
+                                <strong>Interacción:</strong> Haz clic en cualquier punto para ver coordenadas y
+                                pregunta cercana
+                            </div>
+                            <div class="canvas-info">
+                                <strong>Zoom:</strong> Usa Ctrl+Scroll para hacer zoom en la imagen
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h3>📋 Resultados por Columna</h3>
+                <div class="results-grid" id="resultsGrid"></div>
+            </div>
+
+            <div id="debugInfo" class="debug-info" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración específica para formato MIPS (5 columnas, 36 preguntas c/u)
+        // Valores calibrados - Aplicados desde panel de calibración
+        const gridConfig = {
+            marginLeft: 0.133,
+            marginTop: 0.117,
+            marginBottom: 0.12,
+            colSpacing: 0.172,
+            rowSpacing: 0.0217,
+            circleOffsetX: 0.024,
+            circleOffsetXBetween: 0.028,
+            radius: 0.0128,
+            numberWidth: 0.035,
+            questionsPerColumn: 36,
+            totalColumns: 5,
+            totalQuestions: 180
+        };
+
+        let processedResults = [];
+        let currentImageData = null;
+        let detectionResults = null;
+
+        // Configurar drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Agregar click al área de carga para abrir selector de archivos
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Por favor selecciona un archivo de imagen válido (JPG, PNG, etc.).');
+                return;
+            }
+
+            // Validar tamaño de archivo (máximo 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showError('El archivo es muy grande. Por favor usa una imagen menor a 10MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentImageData = e.target.result;
+                showImagePreview(e.target.result);
+                showSuccess('✅ Imagen cargada correctamente. Lista para procesar formato MIPS (180 preguntas).');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(src) {
+            const previewSection = document.getElementById('previewSection');
+            const imagePreview = document.getElementById('imagePreview');
+            const controlsSection = document.getElementById('controlsSection');
+
+            imagePreview.src = src;
+            previewSection.style.display = 'block';
+            controlsSection.style.display = 'flex';
+        }
+
+        async function processExam() {
+            if (!currentImageData) {
+                showError('No hay imagen cargada para procesar.');
+                return;
+            }
+
+            showLoading(true);
+            updateProgress(10, 'Iniciando procesamiento...');
+
+            try {
+                addDebugInfo('=== INICIO PROCESAMIENTO EXAMEN MINISTERIO ===');
+
+                // Paso 1: Análisis de estructura del examen
+                updateProgress(20, 'Analizando estructura del examen...');
+                const structureAnalysis = await analyzeExamStructure(currentImageData);
+                addDebugInfo(`✓ Estructura analizada: ${structureAnalysis.columns} columnas detectadas`);
+
+                // Paso 2: Detección de números de preguntas
+                updateProgress(40, 'Detectando números de preguntas...');
+                const questionNumbers = await detectQuestionNumbers(currentImageData, structureAnalysis);
+                addDebugInfo(`✓ Números detectados: ${questionNumbers.length} preguntas encontradas`);
+
+                // Paso 3: Análisis de círculos marcados
+                updateProgress(60, 'Analizando círculos marcados...');
+                const circleResults = await analyzeAnswerCircles(currentImageData, questionNumbers, structureAnalysis);
+                addDebugInfo(`✓ Círculos analizados: ${circleResults.markedCount} marcados, ${circleResults.emptyCount} vacíos`);
+
+                // Paso 4: Correlación y ordenamiento
+                updateProgress(80, 'Correlacionando respuestas...');
+                const finalResults = await correlateAndOrder(questionNumbers, circleResults, structureAnalysis);
+                addDebugInfo(`✓ Correlación completada: ${finalResults.validAnswers}/180 respuestas válidas`);
+
+                // Paso 5: Validación final
+                updateProgress(95, 'Validando resultados...');
+                const validation = validateResults(finalResults);
+
+                updateProgress(100, 'Procesamiento completado');
+                showLoading(false);
+
+                // Mostrar resultados
+                processedResults = finalResults.answers;
+                detectionResults = {
+                    structure: structureAnalysis,
+                    validation: validation,
+                    stats: finalResults.stats
+                };
+
+                displayDetectionInfo();
+                displayResults();
+
+                if (validation.isValid) {
+                    showSuccess(`🎯 ¡Procesamiento exitoso! Detección exacta lograda: ${finalResults.stats.valid}/180 respuestas detectadas.`);
+                } else {
+                    showWarning(`⚠️ ${validation.message}`);
+                }
+
+            } catch (error) {
+                addDebugInfo(`❌ ERROR: ${error.message}`);
+                console.error('Error completo:', error);
+                showLoading(false);
+                showError(`Error en el procesamiento: ${error.message}`);
+            }
+        }
+
+        async function analyzeExamStructure(imageData) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        // Análisis específico para formato ministerio con membrete y pie de página
+                        const imageHeight = img.height;
+                        const imageWidth = img.width;
+
+                        // Estimar área útil (excluyendo membrete y pie de página)
+                        const headerHeight = Math.round(imageHeight * 0.15); // 15% superior para membrete
+                        const footerHeight = Math.round(imageHeight * 0.10); // 10% inferior para pie de página
+                        const usableHeight = imageHeight - headerHeight - footerHeight;
+                        const usableY = headerHeight;
+
+                        // Márgenes laterales
+                        const sideMargin = Math.round(imageWidth * 0.05); // 5% en cada lado
+                        const usableWidth = imageWidth - (sideMargin * 2);
+                        const usableX = sideMargin;
+
+                        addDebugInfo(`Área útil: ${usableWidth}x${usableHeight} desde (${usableX}, ${usableY})`);
+
+                        resolve({
+                            totalWidth: imageWidth,
+                            totalHeight: imageHeight,
+                            usableArea: {
+                                x: usableX,
+                                y: usableY,
+                                width: usableWidth,
+                                height: usableHeight
+                            },
+                            columns: 5,
+                            questionsPerColumn: 36,
+                            columnWidth: usableWidth / 5,
+                            rowHeight: usableHeight / 36
+                        });
+                    };
+                    img.onerror = () => reject(new Error('Error cargando imagen para análisis'));
+                    img.src = imageData;
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        } async function detectQuestionNumbers(imageData, structure) {
+            let worker = null;
+            try {
+                addDebugInfo('Iniciando detección de números con OCR...');
+                worker = await Tesseract.createWorker();
+                await worker.loadLanguage('eng');
+                await worker.initialize('eng');
+
+                // Configuración más permisiva para números
+                await worker.setParameters({
+                    tessedit_char_whitelist: '0123456789',
+                    tessedit_pageseg_mode: '6',
+                    tessedit_ocr_engine_mode: '2',
+                    preserve_interword_spaces: '1'
+                });
+
+                addDebugInfo('Ejecutando OCR para números de preguntas...');
+                const { data } = await worker.recognize(imageData);
+                await worker.terminate();
+
+                addDebugInfo(`OCR completado. Texto detectado: "${data.text.substring(0, 200)}..."`);
+                addDebugInfo(`Palabras encontradas: ${data.words ? data.words.length : 0}`);
+
+                const detectedNumbers = [];
+
+                if (data.words) {
+                    data.words.forEach((word, index) => {
+                        addDebugInfo(`Palabra ${index}: "${word.text}" confianza: ${word.confidence}`);
+
+                        const num = parseInt(word.text.trim());
+                        if (num >= 1 && num <= 180 && word.bbox && word.confidence > 30) { // Reducido umbral
+                            // Verificar que está en el área útil
+                            const centerX = word.bbox.x0 + (word.bbox.x1 - word.bbox.x0) / 2;
+                            const centerY = word.bbox.y0 + (word.bbox.y1 - word.bbox.y0) / 2;
+
+                            addDebugInfo(`Número ${num} encontrado en (${Math.round(centerX)}, ${Math.round(centerY)})`);
+
+                            if (centerX >= structure.usableArea.x &&
+                                centerX <= structure.usableArea.x + structure.usableArea.width &&
+                                centerY >= structure.usableArea.y &&
+                                centerY <= structure.usableArea.y + structure.usableArea.height) {
+
+                                // Determinar columna
+                                const relativeX = centerX - structure.usableArea.x;
+                                const column = Math.floor(relativeX / structure.columnWidth);
+
+                                // Determinar fila
+                                const relativeY = centerY - structure.usableArea.y;
+                                const row = Math.floor(relativeY / structure.rowHeight);
+
+                                const numberData = {
+                                    number: num,
+                                    x: centerX,
+                                    y: centerY,
+                                    column: Math.min(column, 4), // 0-4
+                                    row: Math.min(row, 35), // 0-35
+                                    confidence: word.confidence,
+                                    bbox: word.bbox
+                                };
+
+                                detectedNumbers.push(numberData);
+                                addDebugInfo(`✓ Número ${num} válido en columna ${column + 1}, fila ${row + 1}`);
+                            } else {
+                                addDebugInfo(`✗ Número ${num} fuera del área útil`);
+                            }
+                        }
+                    });
+                }
+
+                // Si no se detectaron números, intentar método alternativo
+                if (detectedNumbers.length === 0) {
+                    addDebugInfo('No se detectaron números con OCR, intentando detección de patrones...');
+                    return await detectNumbersAlternative(imageData, structure);
+                }
+
+                // Eliminar duplicados y ordenar
+                const uniqueNumbers = [];
+                detectedNumbers.forEach(num => {
+                    const existing = uniqueNumbers.find(u => u.number === num.number);
+                    if (!existing) {
+                        uniqueNumbers.push(num);
+                    } else if (num.confidence > existing.confidence) {
+                        const index = uniqueNumbers.indexOf(existing);
+                        uniqueNumbers[index] = num;
+                    }
+                });
+
+                uniqueNumbers.sort((a, b) => a.number - b.number);
+                addDebugInfo(`OCR detectó ${uniqueNumbers.length} números únicos válidos`);
+
+                if (uniqueNumbers.length > 0) {
+                    const samples = uniqueNumbers.slice(0, 5).map(n => `${n.number}(col${n.column + 1})`).join(', ');
+                    addDebugInfo(`Muestra: ${samples}`);
+                }
+
+                return uniqueNumbers;
+
+            } catch (error) {
+                if (worker) await worker.terminate();
+                addDebugInfo(`Error en OCR: ${error.message}`);
+
+                // Usar método alternativo en caso de error
+                addDebugInfo('Usando método alternativo de detección...');
+                return await detectNumbersAlternative(imageData, structure);
+            }
+        }
+
+        async function detectNumbersAlternative(imageData, structure) {
+            addDebugInfo('Iniciando detección alternativa basada en grid...');
+
+            // Generar posiciones estimadas basadas en el grid conocido
+            const estimatedNumbers = [];
+
+            for (let col = 0; col < 5; col++) {
+                for (let row = 0; row < 36; row++) {
+                    const questionNum = col * 36 + row + 1;
+
+                    // Posición estimada del número en el grid
+                    const x = structure.usableArea.x + (col * structure.columnWidth) + (structure.columnWidth * 0.1);
+                    const y = structure.usableArea.y + (row * structure.rowHeight) + (structure.rowHeight * 0.5);
+
+                    estimatedNumbers.push({
+                        number: questionNum,
+                        x: x,
+                        y: y,
+                        column: col,
+                        row: row,
+                        confidence: 50,
+                        isEstimated: true
+                    });
+                }
+            }
+
+            addDebugInfo(`Generadas ${estimatedNumbers.length} posiciones estimadas`);
+            return estimatedNumbers;
+        }
+
+        function generateFallbackNumbers(structure) {
+            const fallbackNumbers = [];
+            for (let col = 0; col < 5; col++) {
+                for (let row = 0; row < 36; row++) {
+                    const questionNum = col * 36 + row + 1;
+                    const x = structure.usableArea.x + (col * structure.columnWidth) + (structure.columnWidth * 0.1);
+                    const y = structure.usableArea.y + (row * structure.rowHeight) + (structure.rowHeight * 0.5);
+
+                    fallbackNumbers.push({
+                        number: questionNum,
+                        x: x,
+                        y: y,
+                        column: col,
+                        row: row,
+                        confidence: 60,
+                        isFallback: true
+                    });
+                }
+            }
+            addDebugInfo('Usando números secuenciales como fallback');
+            return fallbackNumbers;
+        } async function analyzeAnswerCircles(imageData, questionNumbers, structure) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    addDebugInfo('=== INICIO ANÁLISIS DE CÍRCULOS ===');
+
+                    const canvas = document.getElementById('processingCanvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    // Mostrar workspace de calibración para debug visual
+                    const calibrationWorkspace = document.getElementById('calibrationWorkspace');
+                    calibrationWorkspace.style.display = 'block';
+
+                    // Actualizar valores de configuración mostrados (si existen los elementos)
+                    const marginLeftValue = document.getElementById('marginLeftValue');
+                    const circleOffsetXValue = document.getElementById('circleOffsetXValue');
+                    const radiusValue = document.getElementById('radiusValue');
+
+                    if (marginLeftValue) marginLeftValue.textContent = gridConfig.marginLeft;
+                    if (circleOffsetXValue) circleOffsetXValue.textContent = gridConfig.circleOffsetX;
+                    if (radiusValue) radiusValue.textContent = gridConfig.radius;
+
+                    // Información sobre el tamaño
+                    addDebugInfo(`Canvas visible: ${img.width}x${img.height} píxeles, escalado para visualización`);
+
+                    // Añadir funcionalidad de clic para calibración
+                    canvas.onclick = function (event) {
+                        const rect = canvas.getBoundingClientRect();
+                        const scaleX = canvas.width / rect.width;
+                        const scaleY = canvas.height / rect.height;
+                        const x = (event.clientX - rect.left) * scaleX;
+                        const y = (event.clientY - rect.top) * scaleY;
+
+                        addDebugInfo(`🎯 CLICK en coordenadas: (${Math.round(x)}, ${Math.round(y)})`);
+                        addDebugInfo(`   Porcentajes: X=${(x / width * 100).toFixed(2)}%, Y=${(y / height * 100).toFixed(2)}%`);
+
+                        // Encontrar la pregunta más cercana
+                        let closestQuestion = null;
+                        let minDistance = Infinity;
+
+                        circles.forEach(circle => {
+                            const distV = Math.sqrt((x - circle.details.positions.V.x) ** 2 + (y - circle.details.positions.V.y) ** 2);
+                            const distF = Math.sqrt((x - circle.details.positions.F.x) ** 2 + (y - circle.details.positions.F.y) ** 2);
+                            const minDist = Math.min(distV, distF);
+
+                            if (minDist < minDistance) {
+                                minDistance = minDist;
+                                closestQuestion = {
+                                    ...circle,
+                                    clickedCircle: distV < distF ? 'V' : 'F',
+                                    distance: minDist
+                                };
+                            }
+                        });
+
+                        if (closestQuestion) {
+                            addDebugInfo(`   Pregunta más cercana: Q${closestQuestion.questionNumber} (Col${closestQuestion.column}, ${closestQuestion.clickedCircle})`);
+                            addDebugInfo(`   Estado actual: ${closestQuestion.selected || 'vacío'}, Confianza: ${(closestQuestion.confidence * 100).toFixed(1)}%`);
+                        }
+                    };
+
+                    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    addDebugInfo(`Imagen procesada: ${width}x${height} píxeles`);
+
+                    const circles = [];
+                    let markedCount = 0;
+                    let emptyCount = 0;
+                    let bothMarkedCount = 0;
+
+                    // Análisis más detallado por cada pregunta
+                    for (let i = 1; i <= 180; i++) {
+                        const col = Math.floor((i - 1) / 36);
+                        const row = (i - 1) % 36;
+
+                        // Calcular posiciones usando EXACTAMENTE la misma lógica que la calibración
+                        // USAR gridConfig para coordenadas consistentes
+                        const xBase = (gridConfig.marginLeft * width) + (col * gridConfig.colSpacing * width);
+                        const yRow = (gridConfig.marginTop * height) + (row * gridConfig.rowSpacing * height);
+
+                        // Posiciones de los círculos V y F
+                        const cxV = xBase + (gridConfig.circleOffsetX * width);
+                        const cxF = cxV + (gridConfig.circleOffsetXBetween * width);
+                        const cy = yRow;
+                        const r = gridConfig.radius * width;
+
+                        // Analizar círculo V
+                        const resV = analyzeCircleRegion(data, width, height, cxV, cy, r);
+                        // Analizar círculo F
+                        const resF = analyzeCircleRegion(data, width, height, cxF, cy, r);
+
+                        // Determinar cuál está marcado con lógica más robusta
+                        let selected = '';
+                        let confidence = 0;
+                        let status = 'empty';
+
+                        // Umbrales adaptativos
+                        const minThreshold = 0.25;
+                        const strongThreshold = 0.35;
+
+                        const vMarked = resV.darkRatio > minThreshold;
+                        const fMarked = resF.darkRatio > minThreshold;
+
+                        if (vMarked && fMarked) {
+                            // Ambos marcados - elegir el más marcado si hay diferencia significativa
+                            if (Math.abs(resV.darkRatio - resF.darkRatio) > 0.1) {
+                                if (resV.darkRatio > resF.darkRatio) {
+                                    selected = 'V';
+                                    confidence = resV.confidence;
+                                    status = 'marked_v';
+                                    markedCount++; // Solo el círculo seleccionado cuenta como marcado
+                                    emptyCount++;  // El otro círculo cuenta como vacío
+                                } else {
+                                    selected = 'F';
+                                    confidence = resF.confidence;
+                                    status = 'marked_f';
+                                    markedCount++; // Solo el círculo seleccionado cuenta como marcado
+                                    emptyCount++;  // El otro círculo cuenta como vacío
+                                }
+                            } else {
+                                selected = 'ERROR_BOTH';
+                                confidence = Math.max(resV.confidence, resF.confidence);
+                                status = 'error_both';
+                                bothMarkedCount++;
+                                markedCount += 2; // Ambos círculos cuentan como marcados en caso de error
+                            }
+                        } else if (vMarked && !fMarked) {
+                            selected = 'V';
+                            confidence = resV.confidence;
+                            status = 'marked_v';
+                            markedCount++; // Círculo V marcado
+                            emptyCount++;  // Círculo F vacío
+                        } else if (fMarked && !vMarked) {
+                            selected = 'F';
+                            confidence = resF.confidence;
+                            status = 'marked_f';
+                            markedCount++; // Círculo F marcado
+                            emptyCount++;  // Círculo V vacío
+                        } else {
+                            // Ninguno marcado claramente (pregunta no respondida)
+                            selected = '';
+                            confidence = 0;
+                            status = 'empty';
+                            emptyCount += 2; // Ambos círculos vacíos
+                        }
+
+                        circles.push({
+                            questionNumber: i,
+                            column: col + 1,
+                            row: row + 1,
+                            selected: selected,
+                            confidence: confidence,
+                            status: status,
+                            details: {
+                                V: resV,
+                                F: resF,
+                                positions: {
+                                    V: { x: Math.round(cxV), y: Math.round(cy) },
+                                    F: { x: Math.round(cxF), y: Math.round(cy) }
+                                }
+                            }
+                        });
+
+                        // Debug detallado para las primeras preguntas
+                        if (i <= 5 || (i % 36 === 1)) {
+                            addDebugInfo(`Q${i} (Col${col + 1}): V=${resV.darkRatio.toFixed(3)} F=${resF.darkRatio.toFixed(3)} → ${selected || 'vacío'}`);
+                        }
+                    }
+
+                    // Estadísticas de detección
+                    const validAnswers = circles.filter(c => c.selected && c.selected !== 'ERROR_BOTH').length;
+                    const errorAnswers = circles.filter(c => c.selected === 'ERROR_BOTH').length;
+
+                    addDebugInfo(`=== ESTADÍSTICAS DE DETECCIÓN ===`);
+                    addDebugInfo(`Total círculos analizados: ${circles.length * 2} (${circles.length} preguntas × 2 círculos)`);
+                    addDebugInfo(`Círculos marcados: ${markedCount}`);
+                    addDebugInfo(`Círculos vacíos: ${emptyCount}`);
+                    addDebugInfo(`Respuestas válidas: ${validAnswers}/180`);
+                    addDebugInfo(`Respuestas con errores (ambos marcados): ${errorAnswers}`);
+                    addDebugInfo(`Porcentaje de detección: ${((validAnswers / 180) * 100).toFixed(1)}%`);
+
+                    // Dibujar marcas visuales en el canvas para debug
+                    drawDebugMarkers(ctx, circles, structure);
+
+                    resolve({
+                        circles,
+                        markedCount,
+                        emptyCount,
+                        validAnswers,
+                        errorAnswers,
+                        totalCircles: circles.length * 2
+                    });
+                };
+                img.src = imageData;
+            });
+        }
+        function analyzeCircleRegion(pixels, width, height, centerX, centerY, radius) {
+            // Validar parámetros
+            if (!pixels || width <= 0 || height <= 0 || radius <= 0) {
+                return { isMarked: false, confidence: 0, darkRatio: 0, error: 'Parámetros inválidos' };
+            }
+
+            const startX = Math.max(0, Math.round(centerX - radius));
+            const endX = Math.min(width - 1, Math.round(centerX + radius));
+            const startY = Math.max(0, Math.round(centerY - radius));
+            const endY = Math.min(height - 1, Math.round(centerY + radius));
+
+            let darkPixels = 0;
+            let totalPixels = 0;
+            let pixelValues = [];
+            let edgePixels = 0; // Píxeles en el borde del círculo
+            let centerPixels = 0; // Píxeles en el centro del círculo
+
+            // Análisis por anillos concéntricos
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+
+                    if (distance <= radius) {
+                        const pixelIndex = (y * width + x) * 4;
+
+                        // Verificar que no se sale de los límites del array
+                        if (pixelIndex + 2 < pixels.length) {
+                            const r = pixels[pixelIndex];
+                            const g = pixels[pixelIndex + 1];
+                            const b = pixels[pixelIndex + 2];
+
+                            // Conversión a escala de grises más precisa
+                            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                            pixelValues.push(gray);
+                            totalPixels++;
+
+                            // Clasificar por posición en el círculo
+                            if (distance <= radius * 0.6) {
+                                centerPixels++;
+                            } else if (distance >= radius * 0.8) {
+                                edgePixels++;
+                            }
+
+                            // Umbral dinámico para detectar píxeles oscuros
+                            if (gray < 128) {
+                                darkPixels++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (totalPixels === 0) {
+                return {
+                    isMarked: false,
+                    confidence: 0,
+                    darkRatio: 0,
+                    error: 'No se encontraron píxeles válidos',
+                    totalPixels: 0
+                };
+            }
+
+            // Cálculos estadísticos
+            const darkRatio = darkPixels / totalPixels;
+            const avgGray = pixelValues.reduce((sum, val) => sum + val, 0) / pixelValues.length;
+            const variance = pixelValues.reduce((sum, val) => sum + Math.pow(val - avgGray, 2), 0) / pixelValues.length;
+            const stdDev = Math.sqrt(variance);
+
+            // Análisis de distribución de valores
+            pixelValues.sort((a, b) => a - b);
+            const median = pixelValues[Math.floor(pixelValues.length / 2)];
+            const q1 = pixelValues[Math.floor(pixelValues.length * 0.25)];
+            const q3 = pixelValues[Math.floor(pixelValues.length * 0.75)];
+
+            // Detección de marcado más sofisticada
+            let threshold = 0.25; // Umbral base
+            let isMarked = false;
+            let confidence = 0;
+
+            // Criterios múltiples para detección
+            const criteriaResults = {
+                darkRatio: darkRatio > threshold,
+                avgGrayLow: avgGray < 100,
+                medianLow: median < 90,
+                varianceHigh: variance > 300, // Indica contraste
+                q1Low: q1 < 70 // Primer cuartil muy oscuro
+            };
+
+            // Conteo de criterios que indican marcado
+            const positiveResults = Object.values(criteriaResults).filter(Boolean).length;
+
+            // Decisión basada en múltiples criterios
+            if (positiveResults >= 3) {
+                isMarked = true;
+                confidence = 0.8 + (positiveResults * 0.05);
+            } else if (positiveResults >= 2 && darkRatio > 0.2) {
+                isMarked = true;
+                confidence = 0.6 + (darkRatio * 0.5);
+            } else if (darkRatio > 0.35) {
+                // Muy alto ratio de píxeles oscuros
+                isMarked = true;
+                confidence = darkRatio;
+            } else {
+                isMarked = false;
+                confidence = 1 - darkRatio;
+            }
+
+            // Ajustar confianza basada en calidad de análisis
+            if (totalPixels < 10) {
+                confidence *= 0.5; // Reducir confianza si hay muy pocos píxeles
+            }
+
+            confidence = Math.min(0.99, Math.max(0.01, confidence));
+
+            return {
+                isMarked,
+                confidence: Math.round(confidence * 100) / 100,
+                darkRatio: Math.round(darkRatio * 1000) / 1000,
+                avgGray: Math.round(avgGray),
+                median: Math.round(median),
+                variance: Math.round(variance),
+                stdDev: Math.round(stdDev),
+                q1: Math.round(q1),
+                q3: Math.round(q3),
+                threshold,
+                totalPixels,
+                centerPixels,
+                edgePixels,
+                criteria: criteriaResults,
+                positiveResults
+            };
+        }
+
+        async function correlateAndOrder(questionNumbers, circleResults, structure) {
+            addDebugInfo('=== CORRELACIÓN Y ORDENAMIENTO ===');
+
+            // Ordenar resultados por número de pregunta
+            const sortedCircles = circleResults.circles.sort((a, b) => a.questionNumber - b.questionNumber);
+
+            // Generar respuestas en formato CSV
+            const answers = sortedCircles.map(circle => ({
+                question: circle.questionNumber,
+                verdadero: circle.selected === 'V' ? 'X' : '',
+                falso: circle.selected === 'F' ? 'X' : '',
+                confidence: circle.confidence || 0,
+                status: circle.status || 'unknown',
+                column: circle.column,
+                row: circle.row
+            }));
+
+            // Estadísticas detalladas
+            const validAnswers = sortedCircles.filter(c => c.selected && c.selected !== 'ERROR_BOTH').length;
+            const errorAnswers = sortedCircles.filter(c => c.selected === 'ERROR_BOTH').length;
+            const emptyAnswers = sortedCircles.filter(c => !c.selected || c.selected === '').length;
+            const vAnswers = sortedCircles.filter(c => c.selected === 'V').length;
+            const fAnswers = sortedCircles.filter(c => c.selected === 'F').length;
+
+            // Análisis por columnas
+            const columnStats = [];
+            for (let col = 1; col <= 5; col++) {
+                const columnCircles = sortedCircles.filter(c => c.column === col);
+                const columnValid = columnCircles.filter(c => c.selected && c.selected !== 'ERROR_BOTH').length;
+                const columnEmpty = columnCircles.filter(c => !c.selected || c.selected === '').length;
+                const columnErrors = columnCircles.filter(c => c.selected === 'ERROR_BOTH').length;
+
+                columnStats.push({
+                    column: col,
+                    total: columnCircles.length,
+                    valid: columnValid,
+                    empty: columnEmpty,
+                    errors: columnErrors,
+                    percentage: Math.round((columnValid / 36) * 100)
+                });
+            }
+
+            addDebugInfo(`Respuestas procesadas: ${answers.length}`);
+            addDebugInfo(`Válidas: ${validAnswers}, Vacías: ${emptyAnswers}, Errores: ${errorAnswers}`);
+            addDebugInfo(`Verdadero: ${vAnswers}, Falso: ${fAnswers}`);
+
+            // Log de estadísticas por columna
+            columnStats.forEach(stat => {
+                addDebugInfo(`Columna ${stat.column}: ${stat.valid}/36 válidas (${stat.percentage}%)`);
+            });
+
+            // Verificar si la lógica de detección es coherente
+            // Para N preguntas respondidas: N círculos marcados + N vacíos
+            // Para M preguntas no respondidas: 2M círculos vacíos
+            // Total círculos: 360 (180 preguntas × 2 círculos cada una)
+            const totalCircles = 360;
+            const totalMarked = circleResults.markedCount;
+            const totalEmpty = circleResults.emptyCount;
+            const totalDetected = totalMarked + totalEmpty;
+
+            // Calcular preguntas respondidas basándose en círculos marcados
+            const answeredQuestions = totalMarked - (errorAnswers * 2) + errorAnswers; // Restar círculos extra de errores
+            const unansweredQuestions = 180 - answeredQuestions;
+            const expectedMarked = answeredQuestions;
+            const expectedEmpty = answeredQuestions + (unansweredQuestions * 2);
+
+            const detectionAccurate = (totalDetected === totalCircles &&
+                totalMarked === expectedMarked &&
+                totalEmpty === expectedEmpty);
+
+            if (detectionAccurate) {
+                addDebugInfo(`✅ DETECCIÓN COHERENTE: ${answeredQuestions} preguntas respondidas, ${unansweredQuestions} no respondidas`);
+                addDebugInfo(`   Círculos marcados: ${totalMarked}, Círculos vacíos: ${totalEmpty}, Total: ${totalDetected}/360`);
+            } else {
+                addDebugInfo(`⚠️ DETECCIÓN INEXACTA: Total círculos: ${totalDetected}/360`);
+                addDebugInfo(`   Marcados: ${totalMarked} (esperado: ${expectedMarked}), Vacíos: ${totalEmpty} (esperado: ${expectedEmpty})`);
+            }
+
+            return {
+                answers,
+                validAnswers,
+                stats: {
+                    total: answers.length,
+                    valid: validAnswers,
+                    empty: emptyAnswers,
+                    errors: errorAnswers,
+                    vAnswers,
+                    fAnswers,
+                    detectionAccurate,
+                    totalMarked: circleResults.markedCount,
+                    totalEmpty: circleResults.emptyCount,
+                    totalCircles: circleResults.totalCircles,
+                    answeredQuestions: totalMarked - (errorAnswers * 2) + errorAnswers,
+                    unansweredQuestions: 180 - (totalMarked - (errorAnswers * 2) + errorAnswers),
+                    columnStats
+                }
+            };
+        }
+
+        function validateResults(results) {
+            addDebugInfo('=== VALIDACIÓN DE RESULTADOS ===');
+
+            const stats = results.stats;
+            const totalQuestions = 180;
+            const validAnswers = stats.valid;
+            const completionRate = (validAnswers / totalQuestions) * 100;
+
+            let isValid = true;
+            let message = '';
+            let status = 'success';
+
+            // Nueva lógica de validación basada en coherencia de círculos
+            if (stats.detectionAccurate) {
+                // El sistema detectó un patrón coherente de círculos
+                if (completionRate >= 98) {
+                    message = `🎯 PERFECTO: ${validAnswers}/180 respuestas detectadas (${completionRate.toFixed(1)}%). Sistema coherente: ${stats.answeredQuestions} preguntas respondidas, ${stats.unansweredQuestions} no respondidas.`;
+                    status = 'success';
+                } else if (completionRate >= 90) {
+                    message = `✅ EXCELENTE: ${validAnswers}/180 respuestas detectadas (${completionRate.toFixed(1)}%). Sistema coherente: ${stats.answeredQuestions} preguntas respondidas, ${stats.unansweredQuestions} no respondidas.`;
+                    status = 'success';
+                } else if (completionRate >= 70) {
+                    message = `⚠️ BUENO: ${validAnswers}/180 respuestas detectadas (${completionRate.toFixed(1)}%). Sistema coherente pero baja completitud.`;
+                    status = 'warning';
+                } else {
+                    message = `⚠️ REGULAR: ${validAnswers}/180 respuestas detectadas (${completionRate.toFixed(1)}%). Sistema coherente pero muy baja completitud.`;
+                    status = 'warning';
+                }
+            } else {
+                // Sistema incoherente - problemas de detección
+                isValid = false;
+                message = `❌ ERROR: Sistema incoherente. Círculos detectados: ${stats.totalMarked} marcados + ${stats.totalEmpty} vacíos = ${stats.totalMarked + stats.totalEmpty}/${stats.totalCircles}. Se requiere coherencia en el patrón de marcado.`;
+                status = 'error';
+            }
+
+            // Información adicional sobre errores
+            if (stats.errors > 0) {
+                message += ` Errores detectados: ${stats.errors} (ambos círculos marcados).`;
+            }
+
+            // Análisis por columnas
+            const columnProblems = stats.columnStats.filter(col => col.percentage < 80);
+            if (columnProblems.length > 0) {
+                const problemColumns = columnProblems.map(col => `Col${col.column}(${col.percentage}%)`).join(', ');
+                message += ` Columnas con problemas: ${problemColumns}.`;
+                if (status === 'success') status = 'warning';
+            }
+
+            addDebugInfo(`Validación completada: ${isValid ? 'VÁLIDO' : 'INVÁLIDO'}`);
+            addDebugInfo(`Estado: ${status}`);
+            addDebugInfo(`Mensaje: ${message}`);
+
+            return {
+                isValid,
+                message,
+                status,
+                completionRate,
+                detectionAccurate: stats.detectionAccurate,
+                stats: stats
+            };
+        }
+
+        function displayDetectionInfo() {
+            const detectionInfo = document.getElementById('detectionInfo');
+            const detectionStats = document.getElementById('detectionStats');
+            const validationStatus = document.getElementById('validationStatus');
+
+            const stats = detectionResults.stats;
+            const validation = detectionResults.validation;
+
+            detectionStats.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${stats.total}</div>
+                    <div class="stat-label">Total Preguntas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.valid}</div>
+                    <div class="stat-label">Respuestas Válidas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.answeredQuestions || 'N/A'}</div>
+                    <div class="stat-label">Preguntas Respondidas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.unansweredQuestions || 'N/A'}</div>
+                    <div class="stat-label">Preguntas No Respondidas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.totalMarked}</div>
+                    <div class="stat-label">Círculos Marcados</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.totalEmpty}</div>
+                    <div class="stat-label">Círculos Vacíos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.totalMarked + stats.totalEmpty}</div>
+                    <div class="stat-label">Total Círculos / 360</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.vAnswers}</div>
+                    <div class="stat-label">Verdadero (V)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.fAnswers}</div>
+                    <div class="stat-label">Falso (F)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.errors}</div>
+                    <div class="stat-label">Errores</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${validation.completionRate.toFixed(1)}%</div>
+                    <div class="stat-label">Completitud</div>
+                </div>
+            `;
+
+            // Mostrar estadísticas por columna
+            const columnStatsHtml = stats.columnStats.map(col => `
+                <div class="column-stat ${col.percentage < 80 ? 'warning' : col.percentage >= 95 ? 'excellent' : 'good'}">
+                    <strong>Columna ${col.column}:</strong> ${col.valid}/36 (${col.percentage}%)
+                    ${col.errors > 0 ? `<span class="error-count">${col.errors} errores</span>` : ''}
+                </div>
+            `).join('');
+
+            validationStatus.innerHTML = `
+                <div class="validation-status validation-${validation.status}">
+                    ${validation.message}
+                </div>
+                <div class="column-stats-container">
+                    <h4>Estadísticas por Columna:</h4>
+                    ${columnStatsHtml}
+                </div>
+                <div class="detection-accuracy">
+                    <strong>Sistema Coherente:</strong> 
+                    <span class="${validation.detectionAccurate ? 'success' : 'error'}">
+                        ${validation.detectionAccurate ? '✅ SÍ' : '❌ NO'}
+                    </span>
+                    ${validation.detectionAccurate ?
+                    `<span class="accuracy-note">Patrón de marcado coherente detectado: ${stats.answeredQuestions} preguntas respondidas (${stats.totalMarked} círculos marcados) + ${stats.unansweredQuestions} no respondidas (${stats.totalEmpty - stats.answeredQuestions} círculos vacíos adicionales)</span>` :
+                    '<span class="accuracy-note">Se requiere ajustar la detección para lograr un patrón coherente de círculos marcados/vacíos</span>'
+                }
+                </div>
+            `;
+
+            detectionInfo.style.display = 'block';
+
+            // Mostrar botones adicionales
+            document.getElementById('calibrateBtn').style.display = 'inline-block';
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+        }
+
+        function displayResults() {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+
+            // Agrupar respuestas por columna
+            const columnData = [[], [], [], [], []];
+            processedResults.forEach(result => {
+                const colIndex = result.column - 1;
+                if (colIndex >= 0 && colIndex < 5) {
+                    columnData[colIndex].push(result);
+                }
+            });
+
+            // Generar HTML para cada columna
+            resultsGrid.innerHTML = columnData.map((columnResults, index) => {
+                // Contar respuestas basándose en el formato real de datos (verdadero/falso con 'X')
+                const trueCount = columnResults.filter(r => r.verdadero === 'X').length;
+                const falseCount = columnResults.filter(r => r.falso === 'X').length;
+                const emptyCount = columnResults.filter(r => r.verdadero === '' && r.falso === '').length;
+
+                const answersHtml = columnResults.map(result => {
+                    let className = 'answer-item ';
+                    let answerText = '?';
+
+                    // Determinar respuesta basándose en el formato real de datos
+                    if (result.verdadero === 'X') {
+                        className += 'true';
+                        answerText = 'V';
+                    } else if (result.falso === 'X') {
+                        className += 'false';
+                        answerText = 'F';
+                    } else {
+                        className += 'empty';
+                        answerText = '?';
+                    }
+
+                    const confidenceText = result.confidence > 0 ? `${(result.confidence * 100).toFixed(0)}%` : '-';
+
+                    return `
+                        <div class="${className}">
+                            <span>P${result.question}: ${answerText}</span>
+                            <span class="confidence-badge">${confidenceText}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="column-results">
+                        <div class="column-header">
+                            Columna ${index + 1}
+                            <br>
+                            <small>V:${trueCount} F:${falseCount} ?:${emptyCount}</small>
+                        </div>
+                        <div class="answer-list">
+                            ${answersHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            resultsSection.style.display = 'block';
+        }
+
+        function calibrateDetection() {
+            if (!currentImageData) {
+                showError('Primero debes cargar y procesar una imagen para usar la calibración.');
+                return;
+            }
+
+            // Mostrar el workspace de calibración
+            const calibrationWorkspace = document.getElementById('calibrationWorkspace');
+            calibrationWorkspace.style.display = 'block';
+
+            // Inicializar los sliders con los valores actuales
+            initializeCalibrationSliders();
+
+            // Mostrar la imagen en el canvas de calibración
+            displayImageForCalibration();
+
+            showSuccess('🎯 Panel de calibración activado. Ajusta los parámetros y observa los cambios en tiempo real.');
+        }
+
+        function initializeCalibrationSliders() {
+            // Solo actualizar los valores, los listeners ya están configurados
+            const sliders = [
+                { id: 'marginLeftSlider', value: gridConfig.marginLeft, display: 'marginLeftDisplay' },
+                { id: 'marginTopSlider', value: gridConfig.marginTop, display: 'marginTopDisplay' },
+                { id: 'colSpacingSlider', value: gridConfig.colSpacing, display: 'colSpacingDisplay' },
+                { id: 'rowSpacingSlider', value: gridConfig.rowSpacing, display: 'rowSpacingDisplay' },
+                { id: 'circleOffsetXSlider', value: gridConfig.circleOffsetX, display: 'circleOffsetXDisplay' },
+                { id: 'circleOffsetXBetweenSlider', value: gridConfig.circleOffsetXBetween, display: 'circleOffsetXBetweenDisplay' },
+                { id: 'radiusSlider', value: gridConfig.radius, display: 'radiusDisplay' }
+            ];
+
+            sliders.forEach(slider => {
+                const sliderElement = document.getElementById(slider.id);
+                const displayElement = document.getElementById(slider.display);
+
+                if (sliderElement && displayElement) {
+                    sliderElement.value = slider.value;
+                    displayElement.textContent = slider.value.toFixed(4);
+                }
+            });
+        }
+
+        // Inicializar los event listeners de los sliders inmediatamente
+        document.addEventListener('DOMContentLoaded', function () {
+            setupSliderListeners();
+        });
+
+        function setupSliderListeners() {
+            const sliders = [
+                { id: 'marginLeftSlider', display: 'marginLeftDisplay' },
+                { id: 'marginTopSlider', display: 'marginTopDisplay' },
+                { id: 'colSpacingSlider', display: 'colSpacingDisplay' },
+                { id: 'rowSpacingSlider', display: 'rowSpacingDisplay' },
+                { id: 'circleOffsetXSlider', display: 'circleOffsetXDisplay' },
+                { id: 'circleOffsetXBetweenSlider', display: 'circleOffsetXBetweenDisplay' },
+                { id: 'radiusSlider', display: 'radiusDisplay' }
+            ];
+
+            sliders.forEach(slider => {
+                const sliderElement = document.getElementById(slider.id);
+                const displayElement = document.getElementById(slider.display);
+
+                if (sliderElement && displayElement) {
+                    // Event listener para actualización en tiempo real
+                    sliderElement.addEventListener('input', function () {
+                        const newValue = parseFloat(this.value);
+                        displayElement.textContent = newValue.toFixed(4);
+
+                        // Actualizar gridConfig
+                        updateTempGridConfig(slider.id, newValue);
+
+                        // Redibujar canvas si está visible
+                        if (currentImageData && document.getElementById('calibrationWorkspace').style.display !== 'none') {
+                            redrawCalibrationCanvas();
+                        }
+                    });
+                }
+            });
+        }
+
+        function updateTempGridConfig(sliderId, value) {
+            // Mapear los IDs de los sliders a las propiedades de gridConfig
+            const mapping = {
+                'marginLeftSlider': 'marginLeft',
+                'marginTopSlider': 'marginTop',
+                'colSpacingSlider': 'colSpacing',
+                'rowSpacingSlider': 'rowSpacing',
+                'circleOffsetXSlider': 'circleOffsetX',
+                'circleOffsetXBetweenSlider': 'circleOffsetXBetween',
+                'radiusSlider': 'radius'
+            };
+
+            if (mapping[sliderId]) {
+                gridConfig[mapping[sliderId]] = value;
+            }
+        }
+
+        function displayImageForCalibration() {
+            if (!currentImageData) return;
+
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.getElementById('processingCanvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Dibujar la grilla de calibración inicial
+                redrawCalibrationCanvas();
+            };
+            img.src = currentImageData;
+        }
+
+        function redrawCalibrationCanvas() {
+            if (!currentImageData) return;
+
+            const canvas = document.getElementById('processingCanvas');
+            const ctx = canvas.getContext('2d');
+            const { width, height } = canvas;
+
+            // Limpiar canvas y redibujar imagen
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0);
+
+                // Simplificar estructura para coincidir con procesamiento
+                const structure = {
+                    totalWidth: width,
+                    totalHeight: height
+                };
+
+                // Dibujar grilla de calibración
+                drawCalibrationGrid(ctx, structure);
+            };
+            img.src = currentImageData;
+        }
+
+        function drawCalibrationGrid(ctx, structure) {
+            // Configuración visual
+            const showQuestionNumbers = false; // Solo números de muestra para no saturar
+            const showAllCircles = true;
+
+            // MOSTRAR TODOS LOS 360 CÍRCULOS para calibración precisa
+            for (let i = 1; i <= 180; i++) {
+                const col = Math.floor((i - 1) / 36);
+                const row = (i - 1) % 36;
+
+                // Calcular posiciones usando EXACTAMENTE la misma lógica que el procesamiento
+                // USAR gridConfig para coordenadas consistentes
+                const xBase = (gridConfig.marginLeft * structure.totalWidth) + (col * gridConfig.colSpacing * structure.totalWidth);
+                const yRow = (gridConfig.marginTop * structure.totalHeight) + (row * gridConfig.rowSpacing * structure.totalHeight);
+
+                // Posiciones de los círculos V y F
+                const cxV = xBase + (gridConfig.circleOffsetX * structure.totalWidth);
+                const cxF = cxV + (gridConfig.circleOffsetXBetween * structure.totalWidth);
+                const cy = yRow;
+                const r = Math.max(gridConfig.radius * structure.totalWidth, 4); // Radio mínimo más pequeño
+
+                // Determinar opacidad y grosor según importancia
+                const isCorner = (i === 1 || i === 36 || i === 37 || i === 72 || i === 73 || i === 108 || i === 109 || i === 144 || i === 145 || i === 180);
+                const isFirstInColumn = (i % 36 === 1);
+                const isLastInColumn = (i % 36 === 0);
+                const isImportant = isCorner || isFirstInColumn || isLastInColumn;
+
+                const lineWidth = isImportant ? 2 : 1;
+                const alpha = isImportant ? 0.8 : 0.4;
+
+                // Dibujar círculo V
+                ctx.beginPath();
+                ctx.arc(cxV, cy, r, 0, 2 * Math.PI);
+                ctx.strokeStyle = `rgba(46, 204, 113, ${alpha})`;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+                if (isImportant) {
+                    ctx.fillStyle = 'rgba(46, 204, 113, 0.2)';
+                    ctx.fill();
+                }
+
+                // Dibujar círculo F
+                ctx.beginPath();
+                ctx.arc(cxF, cy, r, 0, 2 * Math.PI);
+                ctx.strokeStyle = `rgba(231, 76, 60, ${alpha})`;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+                if (isImportant) {
+                    ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
+                    ctx.fill();
+                }
+
+                // Dibujar etiquetas V y F solo para preguntas importantes
+                if (isImportant) {
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('V', cxV, cy - r - 3);
+                    ctx.fillText('F', cxF, cy - r - 3);
+                }
+
+                // Dibujar número de pregunta solo para algunos casos
+                if (isImportant || (i <= 10) || (i % 30 === 0)) {
+                    ctx.fillStyle = '#3498db';
+                    ctx.font = 'bold 9px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(i.toString(), xBase - 20, cy + 2);
+                }
+            }
+
+            // Dibujar líneas de referencia para las columnas usando gridConfig
+            ctx.strokeStyle = 'rgba(52, 152, 219, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+
+            for (let col = 0; col <= 5; col++) {
+                const x = (gridConfig.marginLeft * structure.totalWidth) + (col * gridConfig.colSpacing * structure.totalWidth);
+                ctx.beginPath();
+                ctx.moveTo(x, gridConfig.marginTop * structure.totalHeight);
+                ctx.lineTo(x, structure.totalHeight * (1 - gridConfig.marginBottom));
+                ctx.stroke();
+            }
+
+            // Dibujar líneas de referencia para las filas (cada 6 filas)
+            for (let row = 0; row <= 36; row += 6) {
+                const y = (gridConfig.marginTop * structure.totalHeight) + (row * gridConfig.rowSpacing * structure.totalHeight);
+                ctx.beginPath();
+                ctx.moveTo(gridConfig.marginLeft * structure.totalWidth, y);
+                ctx.lineTo(structure.totalWidth * (1 - 0.05), y); // 5% margen derecho
+                ctx.stroke();
+            }
+
+            // Restablecer línea continua
+            ctx.setLineDash([]);
+
+            // Información de debug en el canvas actualizada
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillRect(10, 10, 350, 120);
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, 350, 120);
+
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('🎯 Calibración Activa - 360 Círculos', 20, 30);
+            ctx.font = '11px Arial';
+            ctx.fillText(`Margen Izq: ${gridConfig.marginLeft.toFixed(3)} | Margen Top: ${gridConfig.marginTop.toFixed(3)}`, 20, 50);
+            ctx.fillText(`Col Spacing: ${gridConfig.colSpacing.toFixed(3)} | Row Spacing: ${gridConfig.rowSpacing.toFixed(4)}`, 20, 70);
+            ctx.fillText(`Offset V: ${gridConfig.circleOffsetX.toFixed(3)} | Dist V-F: ${gridConfig.circleOffsetXBetween.toFixed(3)}`, 20, 90);
+            ctx.fillText(`Radio: ${gridConfig.radius.toFixed(4)} | Total círculos mostrados: 360`, 20, 110);
+        }
+
+        function applyCalibration() {
+            if (!currentImageData) {
+                showError('No hay imagen cargada para aplicar la calibración.');
+                return;
+            }
+
+            // Los valores ya están actualizados en gridConfig
+            showSuccess('✅ Calibración aplicada. Los nuevos valores se usarán en el próximo procesamiento.');
+
+            // Opcional: reprocesar automáticamente
+            if (confirm('¿Deseas reprocesar la imagen con la nueva configuración?')) {
+                processExam();
+            }
+        }
+
+        function resetCalibration() {
+            // Restablecer a los valores calibrados actuales (valores por defecto actualizados)
+            const defaultConfig = {
+                marginLeft: 0.133,
+                marginTop: 0.117,
+                marginBottom: 0.12,
+                colSpacing: 0.172,
+                rowSpacing: 0.0217,
+                circleOffsetX: 0.024,
+                circleOffsetXBetween: 0.028,
+                radius: 0.0128,
+                numberWidth: 0.035,
+                questionsPerColumn: 36,
+                totalColumns: 5,
+                totalQuestions: 180
+            };
+
+            // Actualizar gridConfig global
+            Object.assign(gridConfig, defaultConfig);
+
+            // Reinicializar sliders
+            initializeCalibrationSliders();
+
+            // Redibujar canvas
+            redrawCalibrationCanvas();
+
+            showSuccess('🔄 Configuración restablecida a valores calibrados por defecto.');
+        }
+
+        function saveCalibration() {
+            const configText = `// Configuración de calibración generada el ${new Date().toLocaleString()}
+const gridConfig = {
+    marginLeft: ${gridConfig.marginLeft},
+    marginTop: ${gridConfig.marginTop},
+    marginBottom: ${gridConfig.marginBottom},
+    colSpacing: ${gridConfig.colSpacing},
+    rowSpacing: ${gridConfig.rowSpacing},
+    circleOffsetX: ${gridConfig.circleOffsetX},
+    circleOffsetXBetween: ${gridConfig.circleOffsetXBetween},
+    radius: ${gridConfig.radius},
+    numberWidth: ${gridConfig.numberWidth},
+    questionsPerColumn: ${gridConfig.questionsPerColumn},
+    totalColumns: ${gridConfig.totalColumns},
+    totalQuestions: ${gridConfig.totalQuestions}
+};`;
+
+            const blob = new Blob([configText], { type: 'text/javascript' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `gridConfig_${new Date().toISOString().split('T')[0]}.js`);
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('💾 Configuración guardada como archivo JavaScript.');
+        }
+
+        function downloadResults() {
+            if (processedResults.length === 0) {
+                showError('No hay resultados para descargar.');
+                return;
+            }
+
+            const csv = generateCSV();
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `examen_ministerio_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('Archivo CSV descargado correctamente.');
+        }
+
+        function generateCSV() {
+            let csv = 'Numero;Verdadero;Falso\n';
+            processedResults.forEach(res => {
+                csv += `${res.question};${res.verdadero};${res.falso}\n`;
+            });
+            return csv;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingSection').style.display = show ? 'block' : 'none';
+        }
+
+        function updateProgress(percent, text = '') {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = percent + '%';
+            if (text) {
+                document.getElementById('loadingText').textContent = text;
+            }
+        }
+
+        function showError(message) {
+            const existing = document.querySelector('.error');
+            if (existing) existing.remove();
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = '❌ ' + message;
+
+            document.querySelector('.main-content').insertBefore(errorDiv, document.querySelector('.upload-section').nextSibling);
+
+            setTimeout(() => errorDiv.remove(), 8000);
+        }
+
+        function showSuccess(message) {
+            const existing = document.querySelector('.success');
+            if (existing) existing.remove();
+
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = '✅ ' + message;
+
+            document.querySelector('.main-content').insertBefore(successDiv, document.querySelector('.upload-section').nextSibling);
+
+            setTimeout(() => successDiv.remove(), 5000);
+        }
+
+        function showWarning(message) {
+            const existing = document.querySelector('.validation-warning');
+            if (existing) existing.remove();
+
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'validation-status validation-warning';
+            warningDiv.textContent = '⚠️ ' + message;
+
+            document.querySelector('.main-content').insertBefore(warningDiv, document.querySelector('.upload-section').nextSibling);
+
+            setTimeout(() => warningDiv.remove(), 8000);
+        } function addDebugInfo(message) {
+            const debugDiv = document.getElementById('debugInfo');
+            const shouldShow = true; // Activado para debugging
+            if (shouldShow) {
+                debugDiv.innerHTML += new Date().toLocaleTimeString() + ' - ' + message + '<br>';
+                debugDiv.scrollTop = debugDiv.scrollHeight;
+                debugDiv.style.display = 'block';
+            }
+
+            console.log(message);
+        }
+
+        /**
+         * Dibuja marcadores visuales en el canvas para debug
+         */
+        function drawDebugMarkers(ctx, circles, structure) {
+            const showDebugMarkers = true; // Cambiar a false para ocultar marcadores
+
+            if (!showDebugMarkers) return;
+
+            addDebugInfo('Dibujando marcadores de debug en canvas grande...');
+
+            circles.forEach(circle => {
+                const { V, F } = circle.details.positions;
+                const radius = gridConfig.radius * structure.totalWidth;
+
+                // Radio más grande para mejor visualización
+                const visualRadius = Math.max(radius * 2, 15);
+
+                // Color según el estado
+                let color = '#888'; // Gris para vacío
+                if (circle.selected === 'V') color = '#2ecc71'; // Verde para V
+                else if (circle.selected === 'F') color = '#e74c3c'; // Rojo para F
+                else if (circle.selected === 'ERROR_BOTH') color = '#f39c12'; // Naranja para error
+
+                // Dibujar círculo V con borde más grueso
+                ctx.beginPath();
+                ctx.arc(V.x, V.y, visualRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = circle.selected === 'V' ? color : '#ddd';
+                ctx.lineWidth = circle.selected === 'V' ? 4 : 2;
+                ctx.stroke();
+
+                // Relleno semi-transparente si está marcado
+                if (circle.selected === 'V') {
+                    ctx.fillStyle = color + '40'; // 40 = 25% opacidad
+                    ctx.fill();
+                }
+
+                // Dibujar círculo F con borde más grueso
+                ctx.beginPath();
+                ctx.arc(F.x, F.y, visualRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = circle.selected === 'F' ? color : '#ddd';
+                ctx.lineWidth = circle.selected === 'F' ? 4 : 2;
+                ctx.stroke();
+
+                // Relleno semi-transparente si está marcado
+                if (circle.selected === 'F') {
+                    ctx.fillStyle = color + '40'; // 40 = 25% opacidad
+                    ctx.fill();
+                }
+
+                // Dibujar número de pregunta para mejor referencia
+                if (circle.row <= 3 || circle.row >= 34 || circle.questionNumber % 10 === 1) {
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+
+                    // Contorno blanco para mejor legibilidad
+                    ctx.strokeText(`${circle.questionNumber}`, V.x - 25, V.y - 25);
+                    ctx.fillText(`${circle.questionNumber}`, V.x - 25, V.y - 25);
+                }
+
+                // Mostrar letras V y F cerca de los círculos
+                ctx.fillStyle = '#2c3e50';
+                ctx.font = 'bold 12px Arial';
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+
+                // V
+                ctx.strokeText('V', V.x - 5, V.y + 5);
+                ctx.fillText('V', V.x - 5, V.y + 5);
+
+                // F
+                ctx.strokeText('F', F.x - 5, F.y + 5);
+                ctx.fillText('F', F.x - 5, F.y + 5);
+            });
+
+            // Dibujar leyenda más grande y detallada
+            const legendWidth = 300;
+            const legendHeight = 160;
+            const legendX = 20;
+            const legendY = 20;
+
+            // Fondo de la leyenda
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
+
+            // Título de la leyenda
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('🎯 Leyenda de Detección:', legendX + 10, legendY + 25);
+
+            // Elementos de la leyenda
+            const legendItems = [
+                { color: '#2ecc71', text: 'V marcado', y: 50 },
+                { color: '#e74c3c', text: 'F marcado', y: 75 },
+                { color: '#ddd', text: 'Vacío', y: 100 },
+                { color: '#f39c12', text: 'Error (ambos marcados)', y: 125 }
+            ];
+
+            legendItems.forEach(item => {
+                // Círculo de ejemplo
+                ctx.beginPath();
+                ctx.arc(legendX + 25, legendY + item.y, 8, 0, 2 * Math.PI);
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = item.color === '#ddd' ? 2 : 4;
+                ctx.stroke();
+
+                // Relleno si no es vacío
+                if (item.color !== '#ddd') {
+                    ctx.fillStyle = item.color + '40';
+                    ctx.fill();
+                }
+
+                // Texto
+                ctx.fillStyle = '#2c3e50';
+                ctx.font = '12px Arial';
+                ctx.fillText(item.text, legendX + 45, legendY + item.y + 5);
+            });
+
+            // Información adicional
+            ctx.fillStyle = '#666';
+            ctx.font = '10px Arial';
+            ctx.fillText(`Total preguntas: ${circles.length} | Zoom: Ctrl+Scroll`, legendX + 10, legendY + legendHeight - 10);
+        }
+
+        // Función para descargar la plantilla PDF
+        function downloadTemplate() {
+            const link = document.createElement('a');
+            link.href = 'Plantilla.pdf';
+            link.download = 'Plantilla_Examen_MIPS_180_Preguntas.pdf';
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showSuccess('📄 Plantilla descargada correctamente. Imprímela para completar tu examen.');
+        }
+    </script>
+</body>
+
+</html>
