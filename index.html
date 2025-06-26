@@ -700,6 +700,56 @@
                 max-height: none;
             }
         }
+
+        /* Estilos para el pie de página */
+        .footer {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            margin-top: 40px;
+            border-top: 3px solid #3498db;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .footer p {
+            margin: 0;
+            font-size: 0.9em;
+            opacity: 0.9;
+            letter-spacing: 0.5px;
+        }
+
+        .footer .signature {
+            display: inline;
+            font-size: 0.7em;
+            opacity: 0.6;
+            font-style: italic;
+            margin-left: 8px;
+            color: #bdc3c7;
+            font-weight: 300;
+        }
+
+        /* Responsive para el footer */
+        @media (max-width: 768px) {
+            .footer {
+                padding: 15px 0;
+                margin-top: 30px;
+            }
+            
+            .footer p {
+                font-size: 0.8em;
+            }
+            
+            .footer .signature {
+                font-size: 0.65em;
+                margin-left: 6px;
+            }
+        }
     </style>
 </head>
 
@@ -866,7 +916,7 @@
                         <div class="canvas-controls">
                             <div class="canvas-info">
                                 <strong>Leyenda:</strong>
-                                🟢 V marcado | 🔴 F marcado | ⚪ Vacío | 🟠 Error
+                                🟢 V marcado | 🔴 F marcado | ⚫ Vacío | 🟠 Error
                             </div>
                             <div class="canvas-info">
                                 <strong>Interacción:</strong> Haz clic en cualquier punto para ver coordenadas y
@@ -887,6 +937,13 @@
 
             <div id="debugInfo" class="debug-info" style="display: none;"></div>
         </div>
+        
+        <!-- Pie de página -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>Procesador de MIPS © <span id="currentYear"></span> | Todos los derechos reservados <small class="signature">Liao Miguel</small></p>
+            </div>
+        </footer>
     </div>
 
     <script>
@@ -1113,13 +1170,13 @@
                 await worker.terminate();
 
                 addDebugInfo(`OCR completado. Texto detectado: "${data.text.substring(0, 200)}..."`);
-                addDebugInfo(`Palabras encontradas: ${data.words ? data.words.length : 0}`);
+                addDebugInfo(`Preguntas encontradas: ${data.words ? data.words.length : 0}`);
 
                 const detectedNumbers = [];
 
                 if (data.words) {
                     data.words.forEach((word, index) => {
-                        addDebugInfo(`Palabra ${index}: "${word.text}" confianza: ${word.confidence}`);
+                        addDebugInfo(`Preguntas ${index}: "${word.text}" confianza: ${word.confidence}`);
 
                         const num = parseInt(word.text.trim());
                         if (num >= 1 && num <= 180 && word.bbox && word.confidence > 30) { // Reducido umbral
@@ -1956,7 +2013,19 @@
         // Inicializar los event listeners de los sliders inmediatamente
         document.addEventListener('DOMContentLoaded', function () {
             setupSliderListeners();
+            
+            // Actualizar año actual en el pie de página
+            updateCurrentYear();
         });
+
+        // Función para actualizar el año actual
+        function updateCurrentYear() {
+            const currentYear = new Date().getFullYear();
+            const yearElement = document.getElementById('currentYear');
+            if (yearElement) {
+                yearElement.textContent = currentYear;
+            }
+        }
 
         function setupSliderListeners() {
             const sliders = [
@@ -2360,7 +2429,7 @@ const gridConfig = {
                 const visualRadius = Math.max(radius * 2, 15);
 
                 // Color según el estado
-                let color = '#888'; // Gris para vacío
+                let color = '#666'; // Gris medio para vacío
                 if (circle.selected === 'V') color = '#2ecc71'; // Verde para V
                 else if (circle.selected === 'F') color = '#e74c3c'; // Rojo para F
                 else if (circle.selected === 'ERROR_BOTH') color = '#f39c12'; // Naranja para error
@@ -2368,26 +2437,34 @@ const gridConfig = {
                 // Dibujar círculo V con borde más grueso
                 ctx.beginPath();
                 ctx.arc(V.x, V.y, visualRadius, 0, 2 * Math.PI);
-                ctx.strokeStyle = circle.selected === 'V' ? color : '#ddd';
+                ctx.strokeStyle = circle.selected === 'V' ? color : '#ccc';
                 ctx.lineWidth = circle.selected === 'V' ? 4 : 2;
                 ctx.stroke();
 
-                // Relleno semi-transparente si está marcado
+                // Relleno semi-transparente si está marcado o vacío
                 if (circle.selected === 'V') {
                     ctx.fillStyle = color + '40'; // 40 = 25% opacidad
+                    ctx.fill();
+                } else if (!circle.selected || circle.selected === '') {
+                    // Círculo vacío con relleno gris claro
+                    ctx.fillStyle = '#666' + '20'; // Gris medio con 12% opacidad
                     ctx.fill();
                 }
 
                 // Dibujar círculo F con borde más grueso
                 ctx.beginPath();
                 ctx.arc(F.x, F.y, visualRadius, 0, 2 * Math.PI);
-                ctx.strokeStyle = circle.selected === 'F' ? color : '#ddd';
+                ctx.strokeStyle = circle.selected === 'F' ? color : '#ccc';
                 ctx.lineWidth = circle.selected === 'F' ? 4 : 2;
                 ctx.stroke();
 
-                // Relleno semi-transparente si está marcado
+                // Relleno semi-transparente si está marcado o vacío
                 if (circle.selected === 'F') {
                     ctx.fillStyle = color + '40'; // 40 = 25% opacidad
+                    ctx.fill();
+                } else if (!circle.selected || circle.selected === '') {
+                    // Círculo vacío con relleno gris claro
+                    ctx.fillStyle = '#666' + '20'; // Gris medio con 12% opacidad
                     ctx.fill();
                 }
 
@@ -2440,7 +2517,7 @@ const gridConfig = {
             const legendItems = [
                 { color: '#2ecc71', text: 'V marcado', y: 50 },
                 { color: '#e74c3c', text: 'F marcado', y: 75 },
-                { color: '#ddd', text: 'Vacío', y: 100 },
+                { color: '#666', text: 'Vacío', y: 100 },
                 { color: '#f39c12', text: 'Error (ambos marcados)', y: 125 }
             ];
 
@@ -2449,11 +2526,15 @@ const gridConfig = {
                 ctx.beginPath();
                 ctx.arc(legendX + 25, legendY + item.y, 8, 0, 2 * Math.PI);
                 ctx.strokeStyle = item.color;
-                ctx.lineWidth = item.color === '#ddd' ? 2 : 4;
+                ctx.lineWidth = item.color === '#666' ? 2 : 4;
                 ctx.stroke();
 
-                // Relleno si no es vacío
-                if (item.color !== '#ddd') {
+                // Relleno según el tipo
+                if (item.color === '#666') {
+                    // Círculo vacío con relleno gris claro
+                    ctx.fillStyle = item.color + '30'; // Gris medio con más opacidad para la leyenda
+                    ctx.fill();
+                } else if (item.color !== '#ddd') {
                     ctx.fillStyle = item.color + '40';
                     ctx.fill();
                 }
