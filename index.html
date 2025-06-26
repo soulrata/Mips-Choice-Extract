@@ -53,7 +53,7 @@
 
         .header .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3) !important;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3) !important;
         }
 
         .main-content {
@@ -708,6 +708,9 @@
         <div class="header">
             <h1>🎯 Procesador de Exámenes V/F - DPSP</h1>
             <p>Sistema de detección precisa para exámenes de 180 preguntas con formato de 5 columnas</p>
+            <p style="font-size: 1em; opacity: 0.8; margin-top: 10px;">
+                🆕 <strong>Mejorado:</strong> Filtros de sobre exposición y realce de contraste para mejor detección de marcas
+            </p>
             <div style="margin-top: 20px;">
                 <button class="btn" onclick="downloadTemplate()" style="background: linear-gradient(135deg, #28a745 0%, #34ce57 100%); border: none; color: white; font-weight: bold; padding: 10px 20px; border-radius: 8px; font-size: 1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                     📄 Descargar Plantilla (PDF)
@@ -811,6 +814,24 @@
                                     value="0.008">
                                 <span id="radiusDisplay">0.0080</span>
                             </div>
+
+                            <div class="control-group">
+                                <label for="contrastSlider">Intensidad Contraste:</label>
+                                <input type="range" id="contrastSlider" min="1.0" max="4.0" step="0.1" value="2.5">
+                                <span id="contrastDisplay">2.5</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="exposureSlider">Sobre Exposición:</label>
+                                <input type="range" id="exposureSlider" min="0.1" max="0.7" step="0.05" value="0.3">
+                                <span id="exposureDisplay">0.3</span>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="thresholdSlider">Umbral Detección:</label>
+                                <input type="range" id="thresholdSlider" min="0.05" max="0.4" step="0.01" value="0.15">
+                                <span id="thresholdDisplay">0.15</span>
+                            </div>
                         </div>
 
                         <div class="calibration-actions">
@@ -831,6 +852,9 @@
                                 <li>Modifica la <strong>distancia V-F</strong> para alinear con los círculos de Falso
                                 </li>
                                 <li>Ajusta el <strong>radio de detección</strong> según el tamaño de los círculos</li>
+                                <li>🆕 <strong>Intensidad Contraste:</strong> Aumenta para mayor diferenciación (2.0-4.0)</li>
+                                <li>🆕 <strong>Sobre Exposición:</strong> Reduce para marcas más oscuras (0.1-0.7)</li>
+                                <li>🆕 <strong>Umbral Detección:</strong> Ajusta sensibilidad de marcas (0.05-0.4)</li>
                             </ol>
                         </div>
                     </div>
@@ -880,7 +904,11 @@
             numberWidth: 0.035,
             questionsPerColumn: 36,
             totalColumns: 5,
-            totalQuestions: 180
+            totalQuestions: 180,
+            // Nuevos parámetros para filtros de imagen
+            contrastFactor: 2.5,
+            exposureFactor: 0.3,
+            detectionThreshold: 0.15
         };
 
         let processedResults = [];
@@ -1234,6 +1262,15 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0);
 
+                    // ✨ APLICAR FILTROS DE MEJORA DE IMAGEN ANTES DEL ANÁLISIS
+                    addDebugInfo('📸 Aplicando filtros de mejora de imagen...');
+                    addDebugInfo('   • Filtro de sobre exposición para resaltar marcas');
+                    addDebugInfo('   • Mejora de contraste agresiva');
+                    addDebugInfo('   • Realce específico de marcas de grafito/tinta');
+                    
+                    const enhancedImageData = enhanceImageForMarking(imageData, canvas, ctx);
+                    addDebugInfo('✅ Filtros aplicados exitosamente');
+
                     // Mostrar workspace de calibración para debug visual
                     const calibrationWorkspace = document.getElementById('calibrationWorkspace');
                     calibrationWorkspace.style.display = 'block';
@@ -1286,8 +1323,8 @@
                         }
                     };
 
-                    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    addDebugInfo(`Imagen procesada: ${width}x${height} píxeles`);
+                    const { data, width, height } = enhancedImageData;
+                    addDebugInfo(`🔍 Imagen mejorada procesada: ${width}x${height} píxeles con filtros aplicados`);
 
                     const circles = [];
                     let markedCount = 0;
@@ -1320,9 +1357,9 @@
                         let confidence = 0;
                         let status = 'empty';
 
-                        // Umbrales adaptativos
-                        const minThreshold = 0.25;
-                        const strongThreshold = 0.35;
+                        // Umbrales adaptativos mejorados para imagen con filtros
+                        const minThreshold = gridConfig.detectionThreshold;    // Umbral configurable
+                        const strongThreshold = gridConfig.detectionThreshold + 0.1; // Umbral fuerte
 
                         const vMarked = resV.darkRatio > minThreshold;
                         const fMarked = resF.darkRatio > minThreshold;
@@ -1464,8 +1501,9 @@
                                 edgePixels++;
                             }
 
-                            // Umbral dinámico para detectar píxeles oscuros
-                            if (gray < 128) {
+                            // Umbral más agresivo para píxeles oscuros después de filtros
+                            // Con los filtros aplicados, las marcas deberían ser mucho más oscuras
+                            if (gray < 80) { // Umbral más bajo debido a sobre exposición
                                 darkPixels++;
                             }
                         }
@@ -1896,7 +1934,10 @@
                 { id: 'rowSpacingSlider', value: gridConfig.rowSpacing, display: 'rowSpacingDisplay' },
                 { id: 'circleOffsetXSlider', value: gridConfig.circleOffsetX, display: 'circleOffsetXDisplay' },
                 { id: 'circleOffsetXBetweenSlider', value: gridConfig.circleOffsetXBetween, display: 'circleOffsetXBetweenDisplay' },
-                { id: 'radiusSlider', value: gridConfig.radius, display: 'radiusDisplay' }
+                { id: 'radiusSlider', value: gridConfig.radius, display: 'radiusDisplay' },
+                { id: 'contrastSlider', value: gridConfig.contrastFactor, display: 'contrastDisplay' },
+                { id: 'exposureSlider', value: gridConfig.exposureFactor, display: 'exposureDisplay' },
+                { id: 'thresholdSlider', value: gridConfig.detectionThreshold, display: 'thresholdDisplay' }
             ];
 
             sliders.forEach(slider => {
@@ -1905,7 +1946,9 @@
 
                 if (sliderElement && displayElement) {
                     sliderElement.value = slider.value;
-                    displayElement.textContent = slider.value.toFixed(4);
+                    const decimals = slider.id.includes('threshold') || slider.id.includes('exposure') ? 2 : 
+                                   slider.id.includes('contrast') ? 1 : 4;
+                    displayElement.textContent = slider.value.toFixed(decimals);
                 }
             });
         }
@@ -1923,7 +1966,10 @@
                 { id: 'rowSpacingSlider', display: 'rowSpacingDisplay' },
                 { id: 'circleOffsetXSlider', display: 'circleOffsetXDisplay' },
                 { id: 'circleOffsetXBetweenSlider', display: 'circleOffsetXBetweenDisplay' },
-                { id: 'radiusSlider', display: 'radiusDisplay' }
+                { id: 'radiusSlider', display: 'radiusDisplay' },
+                { id: 'contrastSlider', display: 'contrastDisplay' },
+                { id: 'exposureSlider', display: 'exposureDisplay' },
+                { id: 'thresholdSlider', display: 'thresholdDisplay' }
             ];
 
             sliders.forEach(slider => {
@@ -1934,7 +1980,9 @@
                     // Event listener para actualización en tiempo real
                     sliderElement.addEventListener('input', function () {
                         const newValue = parseFloat(this.value);
-                        displayElement.textContent = newValue.toFixed(4);
+                        const decimals = slider.id.includes('threshold') || slider.id.includes('exposure') ? 2 : 
+                                       slider.id.includes('contrast') ? 1 : 4;
+                        displayElement.textContent = newValue.toFixed(decimals);
 
                         // Actualizar gridConfig
                         updateTempGridConfig(slider.id, newValue);
@@ -1957,7 +2005,10 @@
                 'rowSpacingSlider': 'rowSpacing',
                 'circleOffsetXSlider': 'circleOffsetX',
                 'circleOffsetXBetweenSlider': 'circleOffsetXBetween',
-                'radiusSlider': 'radius'
+                'radiusSlider': 'radius',
+                'contrastSlider': 'contrastFactor',
+                'exposureSlider': 'exposureFactor',
+                'thresholdSlider': 'detectionThreshold'
             };
 
             if (mapping[sliderId]) {
@@ -2118,6 +2169,7 @@
             ctx.fillText(`Col Spacing: ${gridConfig.colSpacing.toFixed(3)} | Row Spacing: ${gridConfig.rowSpacing.toFixed(4)}`, 20, 70);
             ctx.fillText(`Offset V: ${gridConfig.circleOffsetX.toFixed(3)} | Dist V-F: ${gridConfig.circleOffsetXBetween.toFixed(3)}`, 20, 90);
             ctx.fillText(`Radio: ${gridConfig.radius.toFixed(4)} | Total círculos mostrados: 360`, 20, 110);
+            ctx.fillText(`🎛️ Filtros - Contraste: ${gridConfig.contrastFactor.toFixed(1)} | Exposición: ${gridConfig.exposureFactor.toFixed(2)} | Umbral: ${gridConfig.detectionThreshold.toFixed(2)}`, 20, 130);
         }
 
         function applyCalibration() {
@@ -2149,7 +2201,10 @@
                 numberWidth: 0.035,
                 questionsPerColumn: 36,
                 totalColumns: 5,
-                totalQuestions: 180
+                totalQuestions: 180,
+                contrastFactor: 2.5,
+                exposureFactor: 0.3,
+                detectionThreshold: 0.15
             };
 
             // Actualizar gridConfig global
@@ -2427,6 +2482,137 @@ const gridConfig = {
             document.body.removeChild(link);
             
             showSuccess('📄 Plantilla descargada correctamente. Imprímela para completar tu examen.');
+        }
+
+        // Funciones de preprocesamiento de imagen para mejorar detección
+        function enhanceImageForMarking(imageData, canvas, ctx) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const data = ctx.getImageData(0, 0, width, height);
+            const pixels = data.data;
+            
+            // Aplicar múltiples filtros para mejorar las marcas
+            applyOverexposureFilter(pixels, width, height);
+            applyContrastEnhancement(pixels, width, height);
+            applyMarkHighlighting(pixels, width, height);
+            
+            ctx.putImageData(data, 0, 0);
+            return data;
+        }
+
+        function applyOverexposureFilter(pixels, width, height) {
+            // Filtro de sobre exposición para resaltar marcas oscuras
+            const exposureFactor = gridConfig.exposureFactor;
+            
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                
+                // Convertir a escala de grises
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                
+                // Aplicar sobre exposición configurable
+                let enhanced = gray;
+                
+                // Si es oscuro (posible marca), hacerlo MÁS oscuro
+                if (gray < 150) {
+                    enhanced = Math.max(0, gray * exposureFactor); // Oscurecer marcas
+                } else {
+                    // Si es claro, hacerlo MÁS claro
+                    enhanced = Math.min(255, gray * 1.4 + 50); // Aclarar fondo
+                }
+                
+                pixels[i] = enhanced;     // R
+                pixels[i + 1] = enhanced; // G
+                pixels[i + 2] = enhanced; // B
+            }
+        }
+
+        function applyContrastEnhancement(pixels, width, height) {
+            // Mejora de contraste para aumentar la diferencia entre marcas y fondo
+            const factor = gridConfig.contrastFactor; // Factor de contraste configurable
+            const intercept = 128 * (1 - factor);
+            
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                
+                // Aplicar contraste a cada canal
+                pixels[i] = Math.max(0, Math.min(255, factor * r + intercept));
+                pixels[i + 1] = Math.max(0, Math.min(255, factor * g + intercept));
+                pixels[i + 2] = Math.max(0, Math.min(255, factor * b + intercept));
+            }
+        }
+
+        function applyMarkHighlighting(pixels, width, height) {
+            // Filtro específico para destacar marcas de lápiz/bolígrafo
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                
+                // Detectar tonos típicos de grafito/tinta
+                let enhanced = gray;
+                
+                if (gray < 180) {
+                    // Zona potencial de marca - aplicar filtro de realce
+                    const darkness = (180 - gray) / 180;
+                    enhanced = gray * (1 - darkness * 0.8); // Oscurecer proporcionalmente
+                    
+                    // Si es muy oscuro, asegurar que sea completamente negro
+                    if (gray < 100) {
+                        enhanced = Math.min(enhanced, 30);
+                    }
+                }
+                
+                pixels[i] = enhanced;
+                pixels[i + 1] = enhanced;
+                pixels[i + 2] = enhanced;
+            }
+        }
+
+        function applyAdaptiveThresholding(pixels, width, height) {
+            // Umbralización adaptativa para mejorar la separación de marcas
+            const tempPixels = new Uint8ClampedArray(pixels);
+            const windowSize = 15;
+            const C = 10; // Constante de ajuste
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = (y * width + x) * 4;
+                    
+                    // Calcular promedio local
+                    let sum = 0;
+                    let count = 0;
+                    
+                    for (let dy = -windowSize; dy <= windowSize; dy++) {
+                        for (let dx = -windowSize; dx <= windowSize; dx++) {
+                            const ny = y + dy;
+                            const nx = x + dx;
+                            
+                            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+                                const nIdx = (ny * width + nx) * 4;
+                                sum += tempPixels[nIdx];
+                                count++;
+                            }
+                        }
+                    }
+                    
+                    const localMean = sum / count;
+                    const threshold = localMean - C;
+                    
+                    const currentValue = tempPixels[idx];
+                    const newValue = currentValue < threshold ? 0 : 255;
+                    
+                    pixels[idx] = newValue;
+                    pixels[idx + 1] = newValue;
+                    pixels[idx + 2] = newValue;
+                }
+            }
         }
     </script>
 </body>

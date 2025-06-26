@@ -23,7 +23,9 @@ La plantilla incluye:
 
 ### ✨ Funcionalidades Principales
 - **Reconocimiento OCR Avanzado**: Utiliza Tesseract.js para reconocimiento de texto
-- **Sistema de Calibración Visual**: Panel interactivo para ajustar la detección
+- **🆕 Filtros de Mejora de Imagen**: Sistema avanzado de preprocesamiento con sobre exposición y realce de contraste
+- **Sistema de Calibración Visual**: Panel interactivo para ajustar la detección con controles de filtros en tiempo real
+- **🆕 Detección Mejorada de Marcas**: Algoritmos optimizados para detectar marcas débiles o poco contrastadas
 - **Formato CSV con Separadores Punto y Coma**: Genera archivos CSV optimizados para Excel
 - **Vista Previa en Tiempo Real**: Muestra los resultados detectados antes de descargar
 - **Interfaz Moderna**: Diseño responsive y fácil de usar
@@ -119,16 +121,22 @@ Numero,Verdadero,Falso
 ### Paso 2: Calibrar (Opcional)
 Si es la primera vez que usas el sistema o la imagen no se detecta bien:
 1. **Activa el panel de calibración** haciendo clic en "🎯 Calibrar Detección"
-2. **Ajusta los parámetros** usando los sliders interactivos
-3. **Observa en tiempo real** cómo se ajustan los 360 círculos de detección
-4. **Aplica la calibración** cuando esté alineada perfectamente
+2. **Ajusta los parámetros de posición** usando los sliders de margen y espaciado
+3. **🆕 Configura los filtros de imagen**:
+   - **Intensidad Contraste (1.0-4.0)**: Aumenta para mayor diferenciación entre marcas y fondo
+   - **Sobre Exposición (0.1-0.7)**: Reduce para hacer las marcas más oscuras y visibles
+   - **Umbral Detección (0.05-0.4)**: Ajusta la sensibilidad para detectar marcas débiles
+4. **Observa en tiempo real** cómo se ajustan los 360 círculos de detección con filtros aplicados
+5. **Aplica la calibración** cuando esté alineada perfectamente
 
 ### Paso 3: Procesar
 Tienes varias opciones de procesamiento:
 
 #### 🔍 **Procesar Examen** (Modo Estándar)
 - Procesamiento optimizado para la mayoría de imágenes
+- 🆕 **Filtros automáticos aplicados**: Sobre exposición y realce de contraste
 - Algoritmo robusto con múltiples métodos de detección
+- 🆕 **Detección mejorada de marcas débiles**: Especialmente efectivo para marcas poco contrastadas
 - Recomendado para uso general
 
 #### 🎯 **Procesar Imagen de Prueba** (Modo Específico)
@@ -159,18 +167,24 @@ Tienes varias opciones de procesamiento:
 
 ### 🔧 Solución de Problemas
 Si no detecta las 180 respuestas:
-1. **Usa el Modo Depuración** para ver información detallada
-2. **Consulta SOLUCION-PROBLEMAS.md** para guías específicas
-3. **Verifica la calidad** de tu imagen
-4. **Mejora el contraste** si es necesario
+1. **Usa el panel de calibración** para ajustar tanto posición como filtros de imagen
+2. **🆕 Ajusta los filtros de mejora**:
+   - Aumenta el **contraste** si las marcas son muy tenues
+   - Reduce la **sobre exposición** si las marcas son muy claras
+   - Modifica el **umbral de detección** para mayor o menor sensibilidad
+3. **Usa el Modo Depuración** para ver información detallada del procesamiento
+4. **Consulta SOLUCION-PROBLEMAS.md** para guías específicas
+5. **Verifica la calidad** de tu imagen
+6. **Mejora el contraste** de la imagen original si es necesario
 
 ## 🔧 Tecnologías Utilizadas
 
 - **HTML5/CSS3**: Interfaz de usuario moderna y responsive
 - **JavaScript ES6+**: Lógica de aplicación
 - **Tesseract.js**: Motor de OCR para reconocimiento de texto
-- **OpenCV.js**: Procesamiento y mejora de imágenes
-- **Canvas API**: Manipulación de imágenes en el navegador
+- **🆕 Algoritmos de Procesamiento de Imagen**: Filtros avanzados de sobre exposición y mejora de contraste
+- **Canvas API**: Manipulación y filtrado de imágenes en tiempo real en el navegador
+- **🆕 Detección Adaptativa**: Umbrales dinámicos para diferentes tipos de marcas
 
 ## ⚙️ Configuración
 
@@ -196,7 +210,9 @@ Si no detecta las 180 respuestas:
 - **Círculos Completos**: Rellenar completamente los círculos seleccionados
 - **Un Solo Círculo**: Marcar solo UNA opción por pregunta
 - **Marca Clara**: Usar bolígrafo o marcador oscuro
-- **Sin Borrones**: Evitar correcciones que puedan confundir al OCR
+- **🆕 Marcas Débiles**: El sistema ahora puede detectar marcas ligeras gracias a los filtros mejorados
+- **Sin Borrones**: Evitar correcciones que puedan confundir al sistema, aunque es más tolerante
+- **🆕 Diferentes Tipos de Marca**: Compatible con lápiz, bolígrafo, marcador (gracias a filtros adaptativos)
 
 ### Formato del Documento
 - **Numeración Clara**: Los números de pregunta deben ser legibles
@@ -208,19 +224,28 @@ Si no detecta las 180 respuestas:
 ### Problemas Comunes
 
 **"Se detectaron pocas respuestas"**
+- 🆕 **Primer paso**: Usar el panel de calibración para ajustar filtros de imagen
 - Verificar que la imagen sea clara y legible
 - Asegurar que los números de pregunta sean visibles
 - Comprobar que los círculos marcados estén bien rellenados
+- 🆕 **Ajustar contraste**: Aumentar intensidad de contraste en panel de calibración
+- 🆕 **Modificar umbral**: Reducir umbral de detección para marcas más débiles
 
 **"Error al procesar la imagen"**
 - Verificar que el archivo sea una imagen válida (JPG/PNG)
 - Comprobar que el tamaño de archivo no sea excesivo (< 10MB)
 - Intentar con una imagen de mejor calidad
+- 🆕 **Probar con filtros**: Usar calibración para optimizar detección antes del procesamiento
+
+**"Marcas no detectadas correctamente"**
+- 🆕 **Calibrar filtros**: Ajustar sobre exposición y contraste en tiempo real
+- 🆕 **Verificar preview**: Observar en el canvas de calibración cómo se detectan las marcas
+- 🆕 **Ajustar sensibilidad**: Modificar umbral de detección según tipo de marca
 
 **"OpenCV.js aún se está cargando"**
-- Esperar unos segundos más para que carguen las librerías
-- Verificar la conexión a internet
-- Refrescar la página si el problema persiste
+- ⚠️ **Nota**: Esta dependencia ha sido reemplazada por algoritmos nativos más eficientes
+- Los filtros de imagen ahora funcionan directamente en el navegador
+- Si aparece este mensaje, refrescar la página
 
 ## 📞 Soporte
 
@@ -232,3 +257,70 @@ Si tienes problemas o sugerencias:
 ## 📄 Licencia
 
 Este proyecto es de uso educativo y está diseñado específicamente para procesar exámenes MIPS de 180 preguntas V/F.
+
+**Versión actual**: v2.0 - Con filtros avanzados de mejora de imagen y detección optimizada de marcas débiles.
+
+---
+
+## 📋 Registro de Cambios
+
+### v2.0 (Junio 2025) - Filtros de Imagen Avanzados
+- ✅ **Filtros de sobre exposición** para resaltar marcas débiles
+- ✅ **Mejora de contraste configurable** en tiempo real
+- ✅ **Umbral de detección adaptativo** para diferentes tipos de marcas
+- ✅ **Panel de calibración ampliado** con controles de filtros
+- ✅ **Detección mejorada** para marcas de lápiz y bolígrafo
+- ✅ **Algoritmos nativos** sin dependencias externas pesadas
+
+### v1.0 (Inicial)
+- ✅ Reconocimiento OCR básico
+- ✅ Detección de 180 preguntas V/F
+- ✅ Exportación a CSV
+- ✅ Panel de calibración básico
+
+## 🆕 Nuevas Funcionalidades - Filtros de Imagen Avanzados
+
+### 🎯 Sistema de Mejora de Imagen
+El sistema ahora incluye algoritmos avanzados de preprocesamiento que mejoran significativamente la detección de marcas, especialmente útiles para:
+- **Marcas débiles o poco contrastadas**
+- **Imágenes con iluminación irregular**
+- **Marcas hechas con lápiz suave**
+- **Escaneos de baja calidad**
+
+### ⚙️ Controles de Filtros Disponibles
+
+#### 🔧 **Intensidad de Contraste (1.0 - 4.0)**
+- **Propósito**: Aumenta la diferencia entre las marcas y el fondo del papel
+- **Recomendado**: 2.0-3.0 para la mayoría de imágenes
+- **Usar valores altos (3.5-4.0)** cuando las marcas son muy tenues
+- **Usar valores bajos (1.0-2.0)** cuando la imagen ya tiene buen contraste
+
+#### 📸 **Sobre Exposición (0.1 - 0.7)**
+- **Propósito**: Oscurece las marcas y aclara el fondo para mejor detección
+- **Recomendado**: 0.3 para uso general
+- **Reducir (0.1-0.2)** cuando las marcas son muy oscuras
+- **Aumentar (0.5-0.7)** cuando las marcas son muy claras o tenues
+
+#### 🎯 **Umbral de Detección (0.05 - 0.4)**
+- **Propósito**: Controla la sensibilidad del sistema para detectar marcas
+- **Recomendado**: 0.15 para uso general
+- **Reducir (0.05-0.1)** para detectar marcas muy débiles
+- **Aumentar (0.3-0.4)** para evitar falsos positivos en imágenes ruidosas
+
+### 🔍 Cómo Usar los Filtros
+
+1. **Carga tu imagen** y activa el panel de calibración
+2. **Observa el canvas en tiempo real** - verás 360 círculos de detección superpuestos
+3. **Ajusta los filtros gradualmente**:
+   - Comienza con **contraste** para mejorar la diferenciación
+   - Ajusta **sobre exposición** si las marcas siguen siendo difíciles de ver
+   - Modifica **umbral** para afinar la sensibilidad
+4. **Observa los cambios inmediatamente** en el canvas de previsualización
+5. **Aplica los cambios** cuando la detección se vea óptima
+
+### 💡 Consejos de Optimización
+
+- **Para imágenes claras**: Contraste 2.0, Exposición 0.3, Umbral 0.15
+- **Para marcas débiles**: Contraste 3.5, Exposición 0.2, Umbral 0.1
+- **Para imágenes ruidosas**: Contraste 2.5, Exposición 0.4, Umbral 0.25
+- **Para lápiz suave**: Contraste 3.0, Exposición 0.2, Umbral 0.12
