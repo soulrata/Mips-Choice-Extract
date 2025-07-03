@@ -14,14 +14,14 @@
         <div class="header">
             <h1>🎯 Procesador de Exámenes V/F - DPSP</h1>
             <p>Sistema de detección precisa para exámenes de 180 preguntas con formato de 5 columnas</p>
-            <p style="font-size: 1em; opacity: 0.8; margin-top: 10px;">
-                🆕 <strong>Mejorado:</strong> Filtros de sobre exposición y realce de contraste para mejor detección de
-                marcas
-            </p>
-            <div style="margin-top: 20px;">
+            <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
                 <button class="btn" onclick="downloadTemplate()"
                     style="background: linear-gradient(135deg, #28a745 0%, #34ce57 100%); border: none; color: white; font-weight: bold; padding: 10px 20px; border-radius: 8px; font-size: 1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                    📄 Descargar Plantilla (PDF)
+                    📝 Descargar Plantilla V/F (PDF)
+                </button>
+                <button class="btn" onclick="downloadTemplateQuestions()"
+                    style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); border: none; color: white; font-weight: bold; padding: 10px 20px; border-radius: 8px; font-size: 1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    📄 Descargar las Preguntas (PDF)
                 </button>
             </div>
         </div>
@@ -1869,6 +1869,20 @@
             document.body.removeChild(link);
 
             showSuccess('📄 Plantilla descargada correctamente. Imprímela para completar tu examen.');
+        }
+
+        // Función para descargar la preguntas PDF
+        function downloadTemplateQuestions() {
+            const link = document.createElement('a');
+            link.href = 'EnunciadoMIPS180.pdf';
+            link.download = 'Preguntas_MIPS_180_Preguntas.pdf';
+            link.style.display = 'none';
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('📄 Listado de preguntas descargada correctamente. Imprímela para completar tu examen.');
         }
 
         // Funciones de preprocesamiento de imagen para mejorar detección
